@@ -1,0 +1,98 @@
+import cv2    #OpenCV 영상처리 라이브러리를 불러오는 코드이다.
+from gpiozero import Buzzer   #GPIO 부저 제어를 위한 Buzzer 클래스를 불러오는 코드이다.
+import time       #시간 관련 기능을 사용하기 위한 라이브러리이다.
+
+buzzerPin = Buzzer(16)       #GPIO 16번 핀에 연결된 부저 객체를 생성하는 코드이다.
+
+def main():
+
+    camera = cv2.VideoCapture(-1)    #웹캠 장치를 실행하여 영상 입력을 시작하는 코드.
+    camera.set(3, 640)             #카메라의 가로 해상도를 640으로 설정하는 코드.
+    camera.set(4, 480)             #카메라의 세로 해상도를 480으로 설정하는 코드.
+
+    face_xml = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+    #얼굴 검출을 위한 XML파일경로를 지정하는 코드이다.
+
+    eye_xml = cv2.data.haarcascades + 'haarcascade_eye.xml'
+    #눈 검출을 위한 XML파일경로를 지정하는 코드이다.
+
+    face_cascade = cv2.CascadeClassifier(face_xml)
+    #얼굴 검출 기능을 생성하는 코드이다.
+
+    eye_cascade = cv2.CascadeClassifier(eye_xml)
+    #눈 검출 기능을 생성하는 코드이다.
+
+    while(camera.isOpened()):
+    #카메라가 실행 중인 동안 반복 실행하는 코드이다.
+
+        _, image = camera.read()
+        #웹캠으로부터 한 프레임의 영상을 읽어오는 코드이다.
+
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        #컬러 영상을 흑백 영상으로 변환하는 코드이다.
+
+        faces = face_cascade.detectMultiScale(
+                    gray,
+                    scaleFactor=1.1,
+                    minNeighbors=5,
+                    minSize=(100,100),
+                    flags=cv2.CASCADE_SCALE_IMAGE)
+        #흑백 영상에서 얼굴 영역을 검출하는 코드이다.
+
+        print("faces detected Number: " + str(len(faces)))
+        #검출된 얼굴 개수를 출력하는 코드이다.
+
+        if len(faces):
+        #얼굴이 하나 이상 검출되었는지 확인하는 코드이다.
+
+            for (x, y, w, h) in faces:
+            #검출된 얼굴 좌표를 반복 처리하는 코드이다.
+
+                cv2.rectangle(image,(x,y),(x+w,y+h),(255,0,0),2)
+                #얼굴 영역에 파란색 사각형을 그리는 코드이다.
+
+                face_gray = gray[y:y+h, x:x+w]
+                #얼굴 영역의 흑백 이미지를 추출하는 코드이다.
+
+                face_color = image[y:y+h, x:x+w]
+                #얼굴 영역의 컬러 이미지를 추출하는 코드이다.
+
+                eyes = eye_cascade.detectMultiScale(
+                            face_gray,
+                            scaleFactor=1.1,
+                            minNeighbors=5)
+                #얼굴 내부에서 눈 영역을 검출하는 코드이다.
+
+                if len(eyes) <= 1:
+                    buzzerPin.on()
+                    #눈이 1개 이하로 검출될 경우 부저를 켜는 코드이다.
+
+                else:
+                    buzzerPin.off()
+                    #눈이 2개 이상 검출될 경우 부저를 끄는 코드이다.
+
+                for (ex,ey,ew,eh) in eyes:
+                #검출된 눈 좌표를 반복 처리하는 코드이다.
+
+                    cv2.rectangle(face_color,
+                                  (ex,ey),
+                                  (ex+ew,ey+eh),
+                                  (0,255,0),2)
+                    #눈 영역에 초록색 사각형을 그리는 코드이다.
+
+        cv2.imshow('result', image)
+        #결과 영상을 화면에 출력하는 코드이다.
+
+        if cv2.waitKey(1) == ord('q'):
+            break
+            #q키를 입력하면 프로그램을 종료하는 코드이다.
+
+    cv2.destroyAllWindows()
+    #모든 OpenCV 창을 종료하는 코드이다.
+
+    buzzerPin.off()
+    #프로그램 종료 시 부저를 끄는 코드이다.
+
+if __name__ == '__main__':
+    main()
+    # 메인 함수를 실행하는 코드이다.
